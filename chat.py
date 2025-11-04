@@ -1,15 +1,35 @@
-import os
-import yaml
-import chromadb
+"""Simple command-line chat client for exploring the indexed Logseq graph.
 
+This module keeps the runtime experience intentionally transparent: it shows how
+to rebuild a query engine from the stored embeddings and how to send natural
+language questions to it. The print statements highlight how answers relate to
+the original notes.
+"""
+
+import chromadb
+import yaml
 from llama_index.core import Settings, VectorStoreIndex
-from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.ollama import OllamaEmbedding
+from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-CONFIG = yaml.safe_load(open("config.yaml", "r"))
+with open("config.yaml", "r", encoding="utf-8") as f:
+    CONFIG = yaml.safe_load(f)
 
 def build_query_engine():
+    """Create a ``QueryEngine`` that can answer questions over the Logseq index.
+
+    The steps here mirror the high-level components of a RAG system: choose an
+    LLM, choose an embedding model, open the vector store, then ask LlamaIndex
+    for a query interface. Reading through the code reinforces the mental model
+    introduced in ``ingest.py``.
+
+    Returns
+    -------
+    BaseQueryEngine
+        The object that exposes ``query("...")`` for the interactive loop.
+    """
+
     # Models (local via Ollama)
     Settings.llm = Ollama(
         model=CONFIG["models"]["llm"],
@@ -35,6 +55,12 @@ def build_query_engine():
     return query_engine
 
 def main():
+    """Start an interactive chat loop backed by the previously ingested notes.
+
+    Type questions in plain English to see how the retriever surfaces relevant
+    pages. Use ``:q`` to exit when you are done experimenting.
+    """
+
     print("Loading query engine...")
     qe = build_query_engine()
     print("Ready. Type your question (or :q to quit).")
