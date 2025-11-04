@@ -1,0 +1,33 @@
+# Update this to the absolute path of your Logseq graph directory
+# (the folder that contains assets/, journals/, pages/)
+logseq_root: "/Users/jdoe/logseq"
+
+include_dirs:
+  - "journals"
+  - "pages"
+
+exclude_globs:
+  - "**/.git/**"
+  - "**/.DS_Store"
+  - "**/assets/**"   # Skip heavy assets by default
+
+file_exts: [".md"]
+
+chunk:
+  by_headers: true
+  chunk_size: 1200
+  chunk_overlap: 200
+
+retrieval:
+  top_k: 6
+  mmr: true
+
+# On smaller machines use all-minilm, it's relatively lightweight
+models:
+  llm: "llama3.1"
+  embedding: "all-minilm"
+
+storage:
+  chroma_path: ".rag/chroma"
+  index_store: ".rag/index_store"
+  docstore: ".rag/docstore"
