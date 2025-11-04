@@ -12,3 +12,15 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.5.3",
     "pyyaml>=6.0.3",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.3",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = [
+    "tests",
+]

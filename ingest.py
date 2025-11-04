@@ -33,7 +33,7 @@ with open("config.yaml", "r", encoding="utf-8") as f:
 PAGE_LINK = re.compile(r"\[\[([^\]]+)\]\]")                 # [[Page]]
 BLOCK_REF = re.compile(r"\(\(([a-zA-Z0-9_-]{6,})\)\)")       # ((block-id))
 TAG_HASH  = re.compile(r"(?<!\w)#([A-Za-z0-9/_-]+)")            # #tag
-TAG_PROP  = re.compile(r"^tags::\s*(.+)$", re.MULTILINE)        # tags:: a, b
+TAG_PROP  = re.compile(r"^\s*tags::\s*(.+)$", re.MULTILINE)     # tags:: a, b
 
 def normalize_logseq_links(text: str) -> str:
     """Replace Logseq-specific link syntax with plain text.
