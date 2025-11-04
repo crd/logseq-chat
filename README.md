@@ -3,7 +3,7 @@
 A fully local RAG pipeline using LlamaIndex + Ollama + Chroma to query your Logseq notes.
 
 ## Prereqs
-- Python 3.10+
+- Python 3.13+
 - Ollama running (https://ollama.com)
 - Pull a chat and embedding model:
   ```bash
@@ -34,6 +34,11 @@ make ingest
 ## Chat
 ```bash
 make chat
+```
+
+## Tests
+```bash
+make test
 ```
 
 ### Example questions

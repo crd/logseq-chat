@@ -2,7 +2,7 @@
 
 # Create/refresh a local .venv and install deps from pyproject/uv.lock
 install:
-	uv sync
+uv sync --dev
 
 # Optional: create venv explicitly (uv sync will also create one if missing)
 venv:
@@ -13,11 +13,15 @@ ingest:
 	uv run ingest.py
 
 chat:
-	uv run chat.py
+uv run chat.py
+
+# Run the automated test suite
+test:
+uv run --dev pytest
 
 # Create/update a lockfile explicitly (optional; uv sync also updates it)
 lock:
-	uv lock
+uv lock
 
 clean:
 	rm -rf .rag
