@@ -36,6 +36,11 @@ def ingest_module():
         )
         created = True
 
+    added_to_path = False
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+        added_to_path = True
+
     try:
         if "ingest" in sys.modules:
             module = sys.modules["ingest"]
@@ -43,6 +48,8 @@ def ingest_module():
             module = importlib.import_module("ingest")
         yield module
     finally:
+        if added_to_path and str(project_root) in sys.path:
+            sys.path.remove(str(project_root))
         if created and config_path.exists():
             config_path.unlink()
 

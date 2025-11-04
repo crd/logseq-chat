@@ -15,6 +15,6 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
       - name: Run tests
-        run: uv run --dev pytest
+        run: uv run --extra dev pytest
