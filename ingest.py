@@ -1,13 +1,34 @@
-import os, re, glob, pathlib, yaml
+"""Utilities for turning a Logseq graph into a retriever-friendly index.
+
+This script walks through each stage of a Retrieval Augmented Generation (RAG)
+workflow. The ``main`` function mirrors the typical steps:
+
+1. Collect source files from Logseq.
+2. Clean and tag the raw markdown.
+3. Split the content into small, retrievable "nodes".
+4. Persist the resulting embeddings into a vector database (Chroma).
+
+Running ``python ingest.py`` demonstrates how raw notes are transformed into
+something a chatbot can search. The helper functions below keep the individual
+tasks digestible and ready for experimentation.
+"""
+
+import glob
+import os
+import pathlib
+import re
 from typing import List
-from llama_index.core import VectorStoreIndex, StorageContext, Document, Settings
+
+import chromadb
+import yaml
+from llama_index.core import Document, Settings, StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SimpleNodeParser
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
-import chromadb
 
-CONFIG = yaml.safe_load(open("config.yaml", "r"))
+with open("config.yaml", "r", encoding="utf-8") as f:
+    CONFIG = yaml.safe_load(f)
 
 PAGE_LINK = re.compile(r"\[\[([^\]]+)\]\]")                 # [[Page]]
 BLOCK_REF = re.compile(r"\(\(([a-zA-Z0-9_-]{6,})\)\)")       # ((block-id))
@@ -15,11 +36,24 @@ TAG_HASH  = re.compile(r"(?<!\w)#([A-Za-z0-9/_-]+)")            # #tag
 TAG_PROP  = re.compile(r"^tags::\s*(.+)$", re.MULTILINE)        # tags:: a, b
 
 def normalize_logseq_links(text: str) -> str:
+    """Replace Logseq-specific link syntax with plain text.
+
+    Special markup can confuse language models. This helper demonstrates how to
+    pre-process text so the downstream embedding model sees natural language
+    instead of wiki-style tokens.
+    """
+
     text = PAGE_LINK.sub(lambda m: m.group(1), text)
     text = BLOCK_REF.sub(lambda m: f"[ref:{m.group(1)}]", text)
     return text
 
 def parse_tags(text: str) -> List[str]:
+    """Extract Logseq tags from both inline ``#hashtags`` and ``tags::`` fields.
+
+    The returned list is sorted to keep results predictable when you display or
+    filter by tags later in the workflow.
+    """
+
     tags = set()
     for m in TAG_HASH.finditer(text):
         tags.add(m.group(1))
@@ -31,10 +65,18 @@ def parse_tags(text: str) -> List[str]:
     return sorted(tags)
 
 def page_title_from_path(path: str) -> str:
+    """Convert a file path into a human-friendly Logseq page title."""
+
     name = pathlib.Path(path).stem
     return name.replace("_", "-")
 
 def collect_files(root: str, include_dirs: List[str], file_exts: List[str], exclude_globs: List[str]) -> List[str]:
+    """Locate Logseq files to ingest based on the config settings.
+
+    This function connects the configuration knobs to the actual file system. It
+    assembles the "raw corpus" that feeds the remaining steps of the pipeline.
+    """
+
     files = []
     for rel in include_dirs:
         base = os.path.join(root, rel)
@@ -46,10 +88,18 @@ def collect_files(root: str, include_dirs: List[str], file_exts: List[str], excl
     return [f for f in files if f not in excluded and os.path.isfile(f)]
 
 def load_documents(paths: List[str]) -> List[Document]:
+    """Read markdown files and create ``Document`` objects with helpful metadata.
+
+    Each ``Document`` becomes a single unit of knowledge for LlamaIndex. We add
+    metadata like the title, directory, and tags so the chat interface can show
+    meaningful references instead of opaque file names.
+    """
+
     docs = []
     for p in paths:
         try:
-            txt = open(p, "r", encoding="utf-8").read()
+            with open(p, "r", encoding="utf-8") as f:
+                txt = f.read()
         except Exception:
             continue
 
@@ -71,6 +121,12 @@ def load_documents(paths: List[str]) -> List[Document]:
     return docs
 
 def main():
+    """Run the full ingestion workflow using settings from ``config.yaml``.
+
+    Running this function end-to-end shows how data collection, cleaning,
+    chunking, and indexing fit together in a practical RAG pipeline.
+    """
+
     root = CONFIG["logseq_root"]
     include_dirs = CONFIG["include_dirs"]
     file_exts = CONFIG["file_exts"]
