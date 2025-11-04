@@ -1,6 +1,6 @@
 # logseq-chat (local RAG over Logseq)
 
-A fully local RAG pipeline using LlamaIndex + Ollama + Chroma to query your Logseq notes.
+A fully local RAG pipeline using LlamaIndex + Ollama + Chroma to query your [Logseq](https://logseq.com/) notes.
 
 ## Prereqs
 - Python 3.13+
