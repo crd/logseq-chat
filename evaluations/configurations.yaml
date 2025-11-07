@@ -1,0 +1,14 @@
+# Presets evaluated by evaluation/runner.py.  Each entry is merged with the
+# base configuration from config.yaml before ingestion and querying.
+configurations:
+  - name: balanced
+    preset: config/presets/default.yaml
+    description: "Balanced accuracy and speed; enables synonym expansion for conceptual recall."
+
+  - name: high_recall
+    preset: config/presets/high_recall.yaml
+    description: "Favors recall with smaller chunks and deeper retrieval."
+
+  - name: fast_local
+    preset: config/presets/lightweight.yaml
+    description: "Optimised for latency on CPUs; limits chunk overlap and disables expansion."

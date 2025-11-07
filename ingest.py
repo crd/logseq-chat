@@ -20,15 +20,13 @@ import re
 from typing import List
 
 import chromadb
-import yaml
 from llama_index.core import Document, Settings, StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SimpleNodeParser
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-with open("config.yaml", "r", encoding="utf-8") as f:
-    CONFIG = yaml.safe_load(f)
+from app_config import ConfigNamespace, load_app_config
 
 PAGE_LINK = re.compile(r"\[\[([^\]]+)\]\]")                 # [[Page]]
 BLOCK_REF = re.compile(r"\(\(([a-zA-Z0-9_-]{6,})\)\)")       # ((block-id))
@@ -120,48 +118,70 @@ def load_documents(paths: List[str]) -> List[Document]:
         docs.append(Document(text=clean, metadata=meta))
     return docs
 
-def main():
-    """Run the full ingestion workflow using settings from ``config.yaml``.
+def run_ingest(config: ConfigNamespace, *, verbose: bool = True) -> None:
+    """Execute the ingestion workflow using ``config``."""
 
-    Running this function end-to-end shows how data collection, cleaning,
-    chunking, and indexing fit together in a practical RAG pipeline.
-    """
+    root = config.logseq_root
+    include_dirs = list(config.include_dirs)
+    file_exts = list(config.file_exts)
+    exclude = list(config.exclude_globs)
 
-    root = CONFIG["logseq_root"]
-    include_dirs = CONFIG["include_dirs"]
-    file_exts = CONFIG["file_exts"]
-    exclude = CONFIG["exclude_globs"]
-
-    if not os.path.isdir(root):
-        raise SystemExit(f"Logseq root does not exist: {root}\nEdit config.yaml to set logseq_root.")
+    if not root or not os.path.isdir(root):
+        raise SystemExit(
+            f"Logseq root does not exist: {root}\n"
+            "Edit config.yaml to set logseq_root before running ingest."
+        )
 
     paths = collect_files(root, include_dirs, file_exts, exclude)
-    print(f"Found {len(paths)} markdown files.")
+    if verbose:
+        print(f"Found {len(paths)} markdown files.")
 
     docs = load_documents(paths)
-    print(f"Loaded {len(docs)} documents.")
+    if verbose:
+        print(f"Loaded {len(docs)} documents.")
 
-    Settings.llm = Ollama(model=CONFIG["models"]["llm"], request_timeout=180)
-    Settings.embed_model = OllamaEmbedding(model_name=CONFIG["models"]["embedding"])
+    Settings.llm = Ollama(
+        model=config.models.llm.name,
+        request_timeout=config.runtime.request_timeout,
+        temperature=config.models.llm.temperature,
+    )
+    Settings.embed_model = OllamaEmbedding(model_name=config.models.embedding.name)
 
     parser = SimpleNodeParser.from_defaults(
         include_metadata=True,
-        chunk_size=CONFIG["chunk"]["chunk_size"],
-        chunk_overlap=CONFIG["chunk"]["chunk_overlap"]
+        chunk_size=config.chunk.chunk_size,
+        chunk_overlap=config.chunk.chunk_overlap,
     )
     nodes = parser.get_nodes_from_documents(docs)
-    print(f"Parsed into {len(nodes)} nodes.")
+    if verbose:
+        print(f"Parsed into {len(nodes)} nodes.")
 
-    chroma_path = CONFIG["storage"]["chroma_path"]
+    chroma_path = config.storage.chroma_path
     os.makedirs(chroma_path, exist_ok=True)
     client = chromadb.PersistentClient(path=chroma_path)
-    collection = client.get_or_create_collection("logseq_rag")
+
+    collection_name = config.storage.collection_name
+    if getattr(config.storage, "clear_before_ingest", False):
+        try:
+            client.delete_collection(collection_name)
+        except Exception:
+            pass
+
+    collection = client.get_or_create_collection(collection_name)
 
     vector_store = ChromaVectorStore(chroma_collection=collection)
     storage_ctx = StorageContext.from_defaults(vector_store=vector_store)
 
     _ = VectorStoreIndex(nodes, storage_context=storage_ctx)
-    print("Index built and persisted to Chroma.")
+    if verbose:
+        print("Index built and persisted to Chroma.")
+
+
+def main() -> None:
+    """Run the full ingestion workflow using settings from ``config.yaml``."""
+
+    config = load_app_config()
+    run_ingest(config)
 
 if __name__ == "__main__":
     main()

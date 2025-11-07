@@ -1,0 +1,16 @@
+# Prioritise coverage: smaller chunks, heavier overlap, deeper retrieval.
+chunk:
+  chunk_size: 650
+  chunk_overlap: 160
+retrieval:
+  top_k: 10
+  mmr:
+    enabled: true
+  query_expansion:
+    enabled: true
+    max_expansions: 10
+models:
+  llm:
+    temperature: 0.05
+storage:
+  collection_name: "logseq_rag_high_recall"

@@ -3,7 +3,122 @@ import sys
 from pathlib import Path
 import textwrap
 
+import importlib
+import sys
+import types
+from pathlib import Path
+import textwrap
+
 import pytest
+
+
+def _install_dependency_stubs():
+    if "chromadb" not in sys.modules:
+        chromadb = types.ModuleType("chromadb")
+
+        class _Collection:
+            pass
+
+        class _Client:
+            def __init__(self, *_, **__):
+                self._collection = _Collection()
+
+            def get_or_create_collection(self, *_args, **_kwargs):
+                return self._collection
+
+            def delete_collection(self, *_args, **_kwargs):
+                return None
+
+        chromadb.PersistentClient = _Client
+        sys.modules["chromadb"] = chromadb
+
+    if "llama_index" not in sys.modules:
+        root = types.ModuleType("llama_index")
+        sys.modules["llama_index"] = root
+
+    if "llama_index.core" not in sys.modules:
+        core = types.ModuleType("llama_index.core")
+
+        class _DummyDocument:
+            def __init__(self, text: str, metadata: dict):
+                self.text = text
+                self.metadata = metadata
+
+        class _DummySettings:
+            llm = None
+            embed_model = None
+
+        class _DummyStorageContext:
+            @classmethod
+            def from_defaults(cls, **_kwargs):
+                return cls()
+
+        class _DummyVectorStoreIndex:
+            def __init__(self, *_, **__):
+                pass
+
+        core.Document = _DummyDocument
+        core.Settings = _DummySettings
+        core.StorageContext = _DummyStorageContext
+        core.VectorStoreIndex = _DummyVectorStoreIndex
+        sys.modules["llama_index.core"] = core
+
+    if "llama_index.core.node_parser" not in sys.modules:
+        node_parser = types.ModuleType("llama_index.core.node_parser")
+
+        class _Parser:
+            @classmethod
+            def from_defaults(cls, **_kwargs):
+                return cls()
+
+            def get_nodes_from_documents(self, documents):
+                return documents
+
+        node_parser.SimpleNodeParser = _Parser
+        sys.modules["llama_index.core.node_parser"] = node_parser
+
+    if "llama_index.embeddings.ollama" not in sys.modules:
+        embeddings = types.ModuleType("llama_index.embeddings.ollama")
+
+        class _DummyEmbedding:
+            def __init__(self, *_, **__):
+                pass
+
+        embeddings.OllamaEmbedding = _DummyEmbedding
+        sys.modules["llama_index.embeddings.ollama"] = embeddings
+
+    if "llama_index.llms.ollama" not in sys.modules:
+        llms = types.ModuleType("llama_index.llms.ollama")
+
+        class _DummyLLM:
+            def __init__(self, *_, **__):
+                pass
+
+        llms.Ollama = _DummyLLM
+        sys.modules["llama_index.llms.ollama"] = llms
+
+    if "llama_index.vector_stores.chroma" not in sys.modules:
+        vector_store = types.ModuleType("llama_index.vector_stores.chroma")
+
+        class _DummyVectorStore:
+            def __init__(self, *_, **__):
+                pass
+
+        vector_store.ChromaVectorStore = _DummyVectorStore
+        sys.modules["llama_index.vector_stores.chroma"] = vector_store
+
+    if "yaml" not in sys.modules:
+        yaml_stub = types.ModuleType("yaml")
+
+        def _safe_load(data):
+            return {}
+
+        def _safe_dump(_data, _fh, **_kwargs):
+            return None
+
+        yaml_stub.safe_load = _safe_load
+        yaml_stub.safe_dump = _safe_dump
+        sys.modules["yaml"] = yaml_stub
 
 
 @pytest.fixture(scope="session")
@@ -11,6 +126,8 @@ def ingest_module():
     project_root = Path(__file__).resolve().parents[1]
     config_path = project_root / "config.yaml"
     created = False
+
+    _install_dependency_stubs()
 
     if not config_path.exists():
         config_path.write_text(
@@ -20,17 +137,37 @@ def ingest_module():
                 include_dirs: []
                 file_exts: []
                 exclude_globs: []
+                runtime:
+                  request_timeout: 30
                 models:
-                  llm: llama3.1
-                  embedding: nomic-embed-text
+                  llm:
+                    name: llama3.1
+                    temperature: 0.0
+                  embedding:
+                    name: nomic-embed-text
                 storage:
                   chroma_path: /tmp/chroma
+                  collection_name: test_collection
+                  clear_before_ingest: true
                 retrieval:
                   top_k: 5
-                  mmr: false
+                  mmr:
+                    enabled: false
+                  query_expansion:
+                    enabled: false
                 chunk:
                   chunk_size: 512
                   chunk_overlap: 50
+                evaluation:
+                  dataset: evaluations/datasets/baseline.yaml
+                  configurations_file: evaluations/configurations.yaml
+                  max_queries: null
+                  scoring:
+                    accuracy_weight: 0.35
+                    coverage_weight: 0.2
+                    relevance_weight: 0.2
+                    hallucination_weight: 0.15
+                    speed_weight: 0.1
                 """
             ).strip()
         )

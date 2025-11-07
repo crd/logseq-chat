@@ -1,0 +1,47 @@
+# Default configuration evaluated by the harness.  These values mirror the
+# settings shipped in config.yaml.sample so users can easily promote this preset
+# to their everyday configuration.
+logseq_root: "/absolute/path/to/your/logseq"
+include_dirs:
+  - "journals"
+  - "pages"
+exclude_globs:
+  - "**/.git/**"
+  - "**/.DS_Store"
+  - "**/assets/**"
+file_exts: [".md"]
+runtime:
+  request_timeout: 180
+chunk:
+  chunk_size: 900
+  chunk_overlap: 120
+retrieval:
+  top_k: 6
+  mmr:
+    enabled: true
+  query_expansion:
+    enabled: true
+    max_expansions: 6
+    synonyms:
+      sailing: ["sloop", "schooner", "boat"]
+      boat: ["vessel", "ship"]
+models:
+  llm:
+    name: "llama3.1"
+    temperature: 0.1
+  embedding:
+    name: "nomic-embed-text"
+storage:
+  chroma_path: ".rag/chroma"
+  collection_name: "logseq_rag"
+  clear_before_ingest: false
+evaluation:
+  dataset: "evaluations/datasets/baseline.yaml"
+  configurations_file: "evaluations/configurations.yaml"
+  max_queries: null
+  scoring:
+    accuracy_weight: 0.35
+    coverage_weight: 0.2
+    relevance_weight: 0.2
+    hallucination_weight: 0.15
+    speed_weight: 0.1

@@ -7,16 +7,15 @@ the original notes.
 """
 
 import chromadb
-import yaml
 from llama_index.core import Settings, VectorStoreIndex
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-with open("config.yaml", "r", encoding="utf-8") as f:
-    CONFIG = yaml.safe_load(f)
+from app_config import ConfigNamespace, load_app_config
+from query_expansion import expand_query
 
-def build_query_engine():
+def build_query_engine(config: ConfigNamespace):
     """Create a ``QueryEngine`` that can answer questions over the Logseq index.
 
     The steps here mirror the high-level components of a RAG system: choose an
@@ -32,16 +31,15 @@ def build_query_engine():
 
     # Models (local via Ollama)
     Settings.llm = Ollama(
-        model=CONFIG["models"]["llm"],
-        request_timeout=180,
+        model=config.models.llm.name,
+        request_timeout=config.runtime.request_timeout,
+        temperature=config.models.llm.temperature,
     )
-    Settings.embed_model = OllamaEmbedding(
-        model_name=CONFIG["models"]["embedding"],
-    )
+    Settings.embed_model = OllamaEmbedding(model_name=config.models.embedding.name)
 
     # Vector store
-    client = chromadb.PersistentClient(path=CONFIG["storage"]["chroma_path"])
-    collection = client.get_or_create_collection("logseq_rag")
+    client = chromadb.PersistentClient(path=config.storage.chroma_path)
+    collection = client.get_or_create_collection(config.storage.collection_name)
     vector_store = ChromaVectorStore(chroma_collection=collection)
 
     # Index from existing Chroma collection
@@ -49,8 +47,8 @@ def build_query_engine():
 
     # Let LlamaIndex create the retriever internally; pass our knobs only
     query_engine = index.as_query_engine(
-        similarity_top_k=CONFIG["retrieval"]["top_k"],
-        use_mmr=CONFIG["retrieval"]["mmr"],
+        similarity_top_k=config.retrieval.top_k,
+        use_mmr=getattr(config.retrieval.mmr, "enabled", False),
     )
     return query_engine
 
@@ -61,8 +59,10 @@ def main():
     pages. Use ``:q`` to exit when you are done experimenting.
     """
 
+    config = load_app_config()
+
     print("Loading query engine...")
-    qe = build_query_engine()
+    qe = build_query_engine(config)
     print("Ready. Type your question (or :q to quit).")
     while True:
         try:
@@ -73,7 +73,11 @@ def main():
         if q == ":q":
             break
 
-        resp = qe.query(q)
+        expanded = expand_query(q, config)
+        if expanded.changed:
+            print(f"\n(expanded query with synonyms: {', '.join(expanded.added_terms)})")
+
+        resp = qe.query(expanded.expanded)
 
         print("\n--- Answer ---")
         print(resp.response)
