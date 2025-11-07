@@ -1,33 +1,59 @@
-# Update this to the absolute path of your Logseq graph directory
-# (the folder that contains assets/, journals/, pages/)
-logseq_root: "/Users/jdoe/logseq"
+# Copy this file to config.yaml and customise the values for your graph.
+# The inline comments suggest proven alternatives so you can experiment quickly.
+
+# Absolute path to the Logseq graph folder (the directory that contains
+# journals/ and pages/).
+logseq_root: "/absolute/path/to/your/logseq"  # Example: "/Users/alex/notes"
 
 include_dirs:
-  - "journals"
-  - "pages"
+  - "journals"  # Add "journals/archive" to cover older notes
+  - "pages"     # Replace with "pages/projects" to scope ingestion
 
 exclude_globs:
   - "**/.git/**"
   - "**/.DS_Store"
-  - "**/assets/**"   # Skip heavy assets by default
+  - "**/assets/**"  # Swap to "**/*.{png,jpg}" to skip only large images
 
-file_exts: [".md"]
+file_exts: [".md"]  # Add ".org" if you keep Org-mode files alongside Markdown
+
+runtime:
+  request_timeout: 180  # Lower to 90 if Ollama frequently times out on long answers
 
 chunk:
-  by_headers: true
-  chunk_size: 1200
-  chunk_overlap: 200
+  chunk_size: 900    # Try 650 for higher recall or 1200 for faster ingestion
+  chunk_overlap: 120 # Reduce to 80 when chunks are larger to save memory
 
 retrieval:
-  top_k: 6
-  mmr: true
+  top_k: 6           # Increase to 10 when answers miss supporting context
+  mmr:
+    enabled: true    # Set to false for deterministic ranking when testing
+  query_expansion:
+    enabled: true    # Disable to rely solely on literal matches
+    max_expansions: 6  # Raise to 10 if you define longer synonym lists
+    synonyms:
+      sailing: ["sloop", "schooner", "boat"]  # Add "catamaran" for racing notes
+      boat: ["vessel", "ship"]                # Extend with "kayak" for paddling logs
 
-# On smaller machines use all-minilm, it's relatively lightweight
 models:
-  llm: "llama3.1"
-  embedding: "all-minilm"
+  llm:
+    name: "llama3.1"    # Alternatives: "mistral" for speed, "mixtral" for depth
+    temperature: 0.1     # Raise towards 0.3 for more conversational answers
+  embedding:
+    name: "nomic-embed-text"  # Swap to "all-minilm" when GPU memory is limited
 
 storage:
-  chroma_path: ".rag/chroma"
-  index_store: ".rag/index_store"
-  docstore: ".rag/docstore"
+  chroma_path: ".rag/chroma"          # Use ".rag/chroma_fast" for experiments
+  collection_name: "logseq_rag"        # Give each preset a unique name when testing
+  clear_before_ingest: false           # Set true to rebuild from scratch every run
+
+# Evaluation defaults used by evaluation/runner.py.
+evaluation:
+  dataset: "evaluations/datasets/baseline.yaml"
+  configurations_file: "evaluations/configurations.yaml"
+  max_queries: null   # Set to a small integer for smoke tests during tuning
+  scoring:
+    accuracy_weight: 0.35        # Raise to 0.5 to emphasise exact matches
+    coverage_weight: 0.2         # Lower when source recall is less critical
+    relevance_weight: 0.2        # Balance between required and optional keywords
+    hallucination_weight: 0.15   # Increase to punish unsupported citations
+    speed_weight: 0.1            # Boost when latency matters most

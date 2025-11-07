@@ -1,0 +1,47 @@
+# Replace the sample questions with prompts that reflect your own graph.
+# The evaluation harness measures how well each configuration answers these
+# questions and whether the returned sources match your expectations.
+queries:
+  - id: sailing
+    question: "What did I write about sailing?"
+    answer_keywords:
+      required:
+        - "sloop"
+      optional:
+        - "sailing"
+        - "harbor"
+        - "schooner"
+    expected_sources:
+      - "journals/2024-06-01.md"
+      - "pages/sailing.md"
+    allow_additional_sources: true
+    notes: "Focus on nautical synonyms so boats like sloops and schooners are surfaced."
+
+  - id: roadmap_meeting
+    question: "Summarize my meeting with Alex about the roadmap."
+    answer_keywords:
+      required:
+        - "roadmap"
+      optional:
+        - "Alex"
+        - "milestones"
+        - "timeline"
+    expected_sources:
+      - "pages/roadmap_meeting.md"
+      - "journals/2024-04-18.md"
+    allow_additional_sources: false
+    notes: "Use this to watch for hallucinations that mention participants who were not present."
+
+  - id: finances
+    question: "How are my quarterly finances looking?"
+    answer_keywords:
+      required:
+        - "quarter"
+        - "revenue"
+      optional:
+        - "expenses"
+        - "profit"
+    expected_sources:
+      - "pages/finances/q2.md"
+    allow_additional_sources: false
+    notes: "Ensures numerical summaries are grounded in the notes."

@@ -1,0 +1,15 @@
+# Latency-focused profile for quick iteration on modest hardware.
+chunk:
+  chunk_size: 1200
+  chunk_overlap: 80
+retrieval:
+  top_k: 4
+  mmr:
+    enabled: false
+  query_expansion:
+    enabled: false
+models:
+  llm:
+    temperature: 0.0
+storage:
+  collection_name: "logseq_rag_fast"

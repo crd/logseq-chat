@@ -1,4 +1,4 @@
-.PHONY: venv install ingest chat lock clean
+.PHONY: venv install ingest chat evaluate lock clean
 
 # Create/refresh a local .venv and install deps from pyproject/uv.lock
 install:
@@ -13,11 +13,14 @@ ingest:
 	uv run ingest.py
 
 chat:
-	uv run chat.py
+        uv run chat.py
+
+evaluate:
+        uv run evaluation/runner.py
 
 # Run the automated test suite
 test:
-	uv run --extra dev pytest
+        uv run --extra dev pytest
 
 # Create/update a lockfile explicitly (optional; uv sync also updates it)
 lock:

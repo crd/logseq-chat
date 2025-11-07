@@ -12,5 +12,8 @@ wheels/
 # RAG location
 .rag
 
+# Evaluation artefacts
+evaluations/results/
+
 # Config file
 config.yaml
